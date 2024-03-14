@@ -22,6 +22,11 @@ public class ClassifyCuisineTest extends AbstractTest {
             = LoggerFactory.getLogger(ClassifyCuisineTest.class);
 
 
+    @Override
+    public String convertResponseToString(HttpResponse response) throws IOException {
+        return super.convertResponseToString(response);
+    }
+
     @Test
     void post_shouldReturn200() throws IOException {
         logger.info("Тест код ответ 200 запущен");
@@ -37,6 +42,12 @@ public class ClassifyCuisineTest extends AbstractTest {
                 .willReturn(aResponse()
                         .withStatus(200).withBody(mapper.writeValueAsString(bodyResponse))));
 
+        stubFor(post(urlEqualTo("/recipes/cuisine"))
+                .withHeader("Content-Type", equalTo("application/json"))
+                .withRequestBody(containing("\"title\": \"lkjhcfghjkl52145\""))
+                .willReturn(aResponse()
+                        .withStatus(202).withBody(mapper.writeValueAsString(bodyResponse))));
+
 
         CloseableHttpClient httpClient = HttpClients.createDefault();
         HttpPost request = new HttpPost(getBaseUrl()+"/recipes/cuisine");
@@ -44,14 +55,32 @@ public class ClassifyCuisineTest extends AbstractTest {
         request.setEntity(new StringEntity("{" +
                 "\"title\": \"Pork roast with green beans\"" +
                 "}"));
+
+        HttpPost requestOk = new HttpPost(getBaseUrl()+"/recipes/cuisine");
+        requestOk.addHeader("Content-Type", "application/json");
+        requestOk.setEntity(new StringEntity("{" +
+                "\"title\": \"lkjhcfghjkl52145\"" +
+                "}"));
         logger.debug("http клиент создан");
         //when
         HttpResponse response = httpClient.execute(request);
+
+        HttpResponse responseOk = httpClient.execute(requestOk);
         //then
         verify(postRequestedFor(urlEqualTo("/recipes/cuisine"))
                 .withHeader("Content-Type", equalTo("application/x-www-form-urlencoded")));
+
+        verify(postRequestedFor(urlEqualTo("/recipes/cuisine"))
+                .withHeader("Content-Type", equalTo("application/json")));
+
+        verify(2,postRequestedFor(urlEqualTo("/recipes/cuisine")));
+
         assertEquals(200, response.getStatusLine().getStatusCode());
         ClassifyCuisineDTO bodyToCheck = mapper.readValue(response.getEntity().getContent(), ClassifyCuisineDTO.class);
+        assertEquals("CuisineValue", bodyToCheck.getCuisine());
+
+        assertEquals(202, responseOk.getStatusLine().getStatusCode());
+         bodyToCheck = mapper.readValue(responseOk.getEntity().getContent(), ClassifyCuisineDTO.class);
         assertEquals("CuisineValue", bodyToCheck.getCuisine());
     }
 
